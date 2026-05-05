@@ -1,0 +1,28 @@
+// Same as tang_primer_20k.cst but with uart_tx/uart_rx pins SWAPPED.
+// If the normal loopback doesn't echo but this one does, the dock has
+// TX/RX reversed from what our main CST expects.
+
+IO_LOC "clk27" H11;
+IO_PORT "clk27" PULL_MODE=UP IO_TYPE=LVCMOS33;
+
+IO_LOC "btn_rst_n" T10;
+IO_PORT "btn_rst_n" PULL_MODE=UP IO_TYPE=LVCMOS33;
+
+// SWAPPED: uart_tx on T13 (was uart_rx), uart_rx on M11 (was uart_tx)
+IO_LOC "uart_tx" T13;
+IO_PORT "uart_tx" PULL_MODE=UP IO_TYPE=LVCMOS33 DRIVE=8;
+IO_LOC "uart_rx" M11;
+IO_PORT "uart_rx" PULL_MODE=UP IO_TYPE=LVCMOS33;
+
+IO_LOC "led[0]" L16;
+IO_LOC "led[1]" L14;
+IO_LOC "led[2]" N14;
+IO_LOC "led[3]" N16;
+IO_LOC "led[4]" A13;
+IO_LOC "led[5]" C13;
+IO_PORT "led[0]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;
+IO_PORT "led[1]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;
+IO_PORT "led[2]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;
+IO_PORT "led[3]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;
+IO_PORT "led[4]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;
+IO_PORT "led[5]" PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33;

@@ -1,0 +1,343 @@
+( --- block 0 --- )
+0 10 LOAD
+
+( --- block 10 --- )
+\ ENDTHRU stops THRU right here; lets you set a generously large
+\ THRU range in the bootblock without sourcing trailing garbage.
+\ Magic addresses: thru_act=0x25 src_lo=0x14 src_hi=0x15 src_end_lo=0x16 src_end_hi=0x17
+: ENDTHRU 0 0 37 C! 0 22 C@ 0 20 C! 0 23 C@ 0 21 C! ;
+VARIABLE DONE VARIABLE ROW
+: HN 15 AND DUP 10 < IF 48 + ELSE 55 + THEN EMIT ;
+: H. DUP 2/ 2/ 2/ 2/ HN HN ;
+: .LINE 16 * 16 0 DO DUP I + B@ DUP 0= IF DROP 32 THEN EMIT LOOP DROP ;
+0 29 LOAD
+( --- block 29 --- )
+: .CH DUP 10 = IF DROP 226 EMIT 134 EMIT 181 EMIT
+ ELSE DUP 32 < OVER 126 > | IF DROP 46 THEN EMIT THEN ;
+0 11 LOAD
+( --- block 11 --- )
+: EDIT DUP ." L" . ." old: " DUP .LINE CR
+  ." new: " 16 *
+  0 DONE !
+  16 0 DO
+    DONE @ IF 32 ELSE
+      KEY DUP 32 < IF DROP 32 1 DONE ! THEN
+    THEN
+    OVER I + 2 SWAP C!
+  LOOP DROP CR UPDATE ;
+0 14 LOAD
+( --- block 14 --- )
+: DUMP 16 0 DO I ROW ! CR ROW @ H. 58 EMIT 32 EMIT
+ 16 0 DO ROW @ 16 * I + B@ H. 32 EMIT LOOP 32 EMIT
+ 16 0 DO ROW @ 16 * I + B@ .CH LOOP
+ LOOP CR ;
+0 12 LOAD
+( --- block 12 --- )
+: .MEM S" here=" TYPE HERE D. S" free=" TYPE UNUSED D. CR ;
+46 EMIT  ( progress: editor utils ok )
+0 15 LOAD
+( --- block 15 --- )
+VARIABLE EROW VARIABLE ECOL VARIABLE EDONE VARIABLE KR VARIABLE HMODE
+: .N DUP 10 < IF ELSE DUP 10 / 48 + EMIT 10 MOD THEN 48 + EMIT ;
+: POS 27 EMIT 91 EMIT SWAP .N 59 EMIT .N 72 EMIT ;
+: CLS 27 EMIT 91 EMIT 50 EMIT 74 EMIT 1 1 POS ;
+0 16 LOAD
+( --- block 16 --- )
+: KW 0 0 DO KEY? IF LEAVE THEN LOOP ;  \ 256-iter polling via LOOP wrap-around
+: GK KEY DUP KR ! 27 = IF KW KEY? IF KEY 91 = IF KEY CASE
+ 65 OF 128 KR ! ENDOF 66 OF 129 KR ! ENDOF
+ 67 OF 130 KR ! ENDOF 68 OF 131 KR ! ENDOF
+ ENDCASE THEN THEN THEN KR @ ;
+0 17 LOAD
+( --- block 17 --- )
+: DC EROW @ 2 + HMODE @ IF ECOL @ 3 * 5 + ELSE ECOL @ 54 + THEN POS ;
+: MU EROW @ 0 > IF EROW @ 1- EROW ! THEN ; : MD EROW @ 15 < IF EROW @ 1+ EROW ! THEN ;
+: ML ECOL @ 0 > IF ECOL @ 1- ECOL ! THEN ; : MR ECOL @ 15 < IF ECOL @ 1+ ECOL ! THEN ;
+0 19 LOAD
+( --- block 19 --- )
+: BO EROW @ 16 * ECOL @ + ;
+: RDRAW EROW @ 2 + ECOL @ 3 * 5 + POS 2 BO C@ H.
+ EROW @ 2 + ECOL @ 54 + POS 2 BO C@ .CH ;
+: AD ECOL @ 15 < IF MR ELSE EROW @ 15 < IF 0 ECOL ! MD THEN THEN ;
+0 20 LOAD
+( --- block 20 --- )
+VARIABLE HSTATE VARIABLE HBUF
+: ISHEX DUP 48 - 10 U< OVER 65 - 6 U< | OVER 97 - 6 U< | ;
+: HEXV DUP 58 < IF 48 - ELSE DUP 71 < IF 55 - ELSE 87 - THEN THEN ;
+: ASCIIN 2 BO C! UPDATE RDRAW AD ;
+0 22 LOAD
+( --- block 22 --- )
+: WARN 19 1 POS S" * unsaved" TYPE ;
+: WCLR 19 1 POS 16 0 DO 32 EMIT LOOP ;
+: HEXIN ISHEX IF
+  HEXV HSTATE @ 0= IF 16 * HBUF ! 1 HSTATE !
+  ELSE HBUF @ + 2 BO C! UPDATE RDRAW 0 HSTATE ! AD THEN
+ ELSE DROP THEN ;
+0 21 LOAD
+( --- block 21 --- )
+: STATUS 18 1 POS HMODE @ IF S" [HEX]  " ELSE S" [ASCII]" THEN TYPE
+ S"  BLK=" TYPE 0 36 C@ 0 D. 0 32 C@ 0 D. 0 33 C@ IF 42 ELSE 32 THEN EMIT ;
+: TYPEIN HMODE @ IF HEXIN ELSE ASCIIN THEN STATUS ;
+: TOGMODE HMODE @ 0= HMODE ! 0 HSTATE ! STATUS ;
+0 1 LOAD
+( --- block 24 --- )
+: CLEFT ECOL @ 0 > IF ML ELSE EROW @ 0 > IF 15 ECOL ! MU THEN THEN ;
+: DHERE 255 BO DO 2 I 1+ C@ 2 I C! LOOP
+ 0 2 255 C! UPDATE 1 1 POS DUMP STATUS ;
+: DLEFT CLEFT DHERE ;
+0 25 LOAD
+( --- block 25 --- )
+: IHERE 2 255 C@ 0= 0= IF 7 EMIT THEN
+ 255 BEGIN BO OVER U< WHILE
+  DUP 1- 2 SWAP C@ OVER 2 SWAP C! 1- REPEAT DROP
+ 0 2 BO C! UPDATE 1 1 POS DUMP STATUS ;
+0 26 LOAD
+( --- block 27 --- )
+: BLK@ 0 36 C@ 0 32 C@ ;
+: DIRTY? 0 33 C@ ;
+: SWBLK DIRTY? IF 7 EMIT WARN 2DROP ELSE WCLR BLOCK 1 1 POS DUMP STATUS THEN ;
+: NEXTBLK BLK@ 1+ DUP 0= IF SWAP 1+ SWAP THEN SWBLK ;
+: PREVBLK BLK@ DUP 0= IF SWAP 1- SWAP THEN 1- SWBLK ;
+0 28 LOAD
+( --- block 28 --- )
+: ENTIN 10 2 BO C! UPDATE RDRAW AD STATUS ;
+: DOSAV WCLR FLUSH STATUS ;
+: DOREV BLK@ SDR DROP 0 0 33 C! WCLR 1 1 POS DUMP STATUS ;
+0 24 LOAD
+( --- block 26 --- )
+: K KR @ ;
+: EDK K 8 = K 127 = | IF DLEFT THEN K 24 = IF DHERE THEN
+ K 14 = IF IHERE THEN K 6 = IF NEXTBLK THEN K 2 = IF PREVBLK THEN
+ K 15 = IF DOSAV THEN K 18 = IF DOREV THEN K 13 = IF ENTIN THEN
+ K 31 > K 127 < AND IF K TYPEIN THEN ;
+0 23 LOAD
+( --- block 23 --- )
+: DISP KR @ 27 = IF DIRTY? IF
+   19 1 POS S" discard? y/n " TYPE KEY
+   DUP 121 = SWAP 89 = | IF DOREV 1 EDONE !
+   ELSE WCLR WARN THEN
+  ELSE WCLR 1 EDONE ! THEN THEN
+ KR @ 3 = IF DIRTY? IF DOREV THEN 1 EDONE ! THEN
+ KR @ 9 = IF TOGMODE THEN
+ KR @ 128 = IF MU THEN  KR @ 129 = IF MD THEN
+ KR @ 130 = IF MR THEN  KR @ 131 = IF ML THEN
+ EDK ;
+0 18 LOAD
+( --- block 18 --- )
+: HEDIT DEPTH IF BLOCK THEN
+ 0 EROW ! 0 ECOL ! 0 EDONE !
+ 0 HMODE ! 0 HSTATE ! CLS
+ 1 1 POS S" ^F/^B=blk ^O=save ^R=revert ^N=ins ^X=del ESC=quit" TYPE
+ DUMP STATUS
+ BEGIN DC GK KR ! DISP EDONE @ UNTIL CLS ;
+46 EMIT  ( progress: hedit ok )
+0 40 LOAD
+( --- block 40 --- )
+: MENU CLS ." 8x MC14500 SD-Forth" CR
+ ." SD-INIT . first | 0 100 HEDIT | 0 100 0 107 THRU" CR
+ ." files: DIR-INIT | hi lo cnt REGISTER name | RUN name | DIR | ERA name" CR ;
+0 41 LOAD
+( --- block 41 --- )
+: LIST BLOCK DUMP ;
+: RXBLK ( hi lo -- ) BLOCK 0 BEGIN KEY OVER 2 SWAP C! 1+ DUP 0= UNTIL DROP UPDATE FLUSH ;
+: RXBLKS ( hi lo count -- ) 0 DO 2DUP RXBLK 1+ DUP 0= IF SWAP 1+ SWAP THEN LOOP 2DROP ;
+46 EMIT  ( progress: rxblk ok )
+0 44 LOAD
+( --- block 44 --- )
+( files - directory @ SD 1 0; first 256 blocks reserved for direct use )
+VARIABLE OK VARIABLE SO VARIABLE LN
+VARIABLE RH VARIABLE RL VARIABLE RC
+VARIABLE T2H VARIABLE T2L VARIABLE EH
+VARIABLE NEH VARIABLE NEL
+VARIABLE SH VARIABLE SL VARIABLE FOVL
+: DBLK 1 0 BLOCK ;
+: DFLU UPDATE FLUSH ;
+: SLOT 16 * ;
+: BB! 2 SWAP C! ;
+: BBC 2 SWAP C@ ;
+: U16< ( h1 l1 h2 l2 -- flag )
+ T2L ! T2H !
+ OVER T2H @ U< IF 2DROP TRUE ELSE
+  OVER T2H @ XOR IF 2DROP FALSE ELSE
+   NIP T2L @ U<
+  THEN
+ THEN ;
+: SEND ( hi lo cnt -- end_hi end_lo )
+ SWAP >R SWAP EH ! R@ +
+ DUP R> U< IF EH @ 1+ ELSE EH @ THEN SWAP ;
+0 45 LOAD
+( --- block 45 --- )
+: SLOT-CNT SLOT 15 + BBC ;
+: SLOT-HI SLOT 13 + BBC ;
+: SLOT-LO SLOT 14 + BBC ;
+: SLOT-OVL? ( idx -- flag )
+ DUP SLOT-CNT 0= IF DROP FALSE ELSE
+  DUP SLOT-HI SH ! DUP SLOT-LO SL !
+  SLOT-CNT SH @ SL @ ROT SEND
+  RH @ RL @ 2SWAP U16<
+  SH @ SL @ NEH @ NEL @ U16< AND
+ THEN ;
+: NEW-OVL? ( skip-idx -- flag )
+ 0 FOVL !
+ 16 0 DO DUP I = 0= IF
+  I SLOT-OVL? IF -1 FOVL ! THEN
+ THEN LOOP DROP FOVL @ ;
+: DIR-INIT DBLK 0 0 DO 0 I BB! LOOP DFLU ;  \ zero all 256 bytes via LOOP wrap-around
+: FIND-FREE DBLK -1 16 0 DO I SLOT-CNT 0= IF DROP I LEAVE THEN LOOP ;
+0 46 LOAD
+( --- block 46 --- )
+: NAME=? SLOT SO ! 1 OK !
+ LN @ 13 U> IF 0 OK ! THEN
+ OK @ IF LN @ SO @ + BBC 0= 0= IF 0 OK ! THEN THEN
+ OK @ IF LN @ 0 DO I 1 SWAP C@ SO @ I + BBC XOR
+  IF 0 OK ! LEAVE THEN LOOP THEN
+ OK @ ;
+0 47 LOAD
+( --- block 47 --- )
+: FIND-NAMED DBLK -1 16 0 DO I NAME=? IF DROP I LEAVE THEN LOOP ;
+: (REG-WRITE) SLOT SO !
+ 13 0 DO 0 SO @ I + BB! LOOP
+ LN @ 0 DO I 1 SWAP C@ SO @ I + BB! LOOP
+ RH @ SO @ 13 + BB! RL @ SO @ 14 + BB!
+ RC @ SO @ 15 + BB! DFLU ;
+0 48 LOAD
+( --- block 48 --- )
+: PNAME SLOT 13 0 DO DUP I + BBC DUP 0= IF DROP LEAVE THEN EMIT LOOP DROP ;
+: REGISTER ( hi lo cnt -- )
+ PARSE-NAME LN ! 2DROP
+ DEPTH 3 U< IF 7 EMIT ELSE
+  RC ! RL ! RH !
+  LN @ 0= RC @ 0= OR
+  RH @ 0= RL @ 0= AND OR
+  RH @ 1 = RL @ 0= AND OR IF 7 EMIT ELSE
+   RH @ RL @ RC @ SEND NEL ! NEH !
+   DBLK FIND-NAMED 0< 0= IF 7 EMIT ELSE
+   -1 NEW-OVL? IF 7 EMIT ELSE
+   FIND-FREE DUP 0< IF DROP 7 EMIT ELSE (REG-WRITE) THEN
+   THEN THEN
+  THEN
+ THEN ;
+46 EMIT  ( progress: files-fs ok )
+0 49 LOAD
+( --- block 49 --- )
+: RUN PARSE-NAME LN ! 2DROP FIND-NAMED
+ DUP 0< IF DROP 7 EMIT ELSE DUP SLOT-HI SWAP SLOT-LO LOAD THEN ;
+: ERA PARSE-NAME LN ! 2DROP FIND-NAMED
+ DUP 0< IF DROP ELSE 0 SWAP SLOT 15 + BB! DFLU THEN ;
+: WIPE PARSE-NAME LN ! 2DROP FIND-NAMED
+ DUP 0< IF DROP 7 EMIT ELSE
+  DUP SLOT-CNT >R DUP SLOT-HI SWAP SLOT-LO
+  R> 0 DO
+   2DUP BLOCK
+   0 BEGIN 0 OVER 2 SWAP C! 1+ DUP 0= UNTIL DROP
+   UPDATE FLUSH
+   1+ DUP 0= IF SWAP 1+ SWAP THEN
+  LOOP 2DROP
+ THEN ;
+: RESIZE ( newcnt -- )
+ DEPTH 1 U< IF 7 EMIT ELSE
+  PARSE-NAME LN ! 2DROP
+  LN @ 0= IF DROP 7 EMIT ELSE
+   DBLK FIND-NAMED DUP 0< IF 2DROP 7 EMIT ELSE
+    DUP SLOT-HI RH ! DUP SLOT-LO RL ! OVER RC !
+    RH @ RL @ RC @ SEND NEL ! NEH !
+    DUP NEW-OVL? IF 2DROP 7 EMIT ELSE
+     RC @ SWAP SLOT 15 + BB! DFLU DROP
+    THEN
+   THEN
+  THEN
+ THEN ;
+0 50 LOAD
+( --- block 50 --- )
+: DIR DBLK 16 0 DO I SLOT-CNT 0= 0= IF
+ SPACE I PNAME ."  @ "
+ I SLOT-HI 0 D. I SLOT-LO 0 D.
+ ." (" I SLOT-CNT 0 D. ." blocks)" CR THEN LOOP ;
+: ?FILE PARSE-NAME LN ! 2DROP FIND-NAMED
+ DUP 0< IF DROP 7 EMIT ELSE
+  DUP SLOT-HI SWAP DUP SLOT-LO SWAP SLOT-CNT
+ THEN ;
+: ?HEDIT PARSE-NAME LN ! 2DROP FIND-NAMED
+ DUP 0< IF DROP 7 EMIT ELSE
+  DUP SLOT-HI SWAP SLOT-LO HEDIT
+ THEN ;
+: FILES CR ." Files-FS on SD sector 1:0 (data from 1:1+)" CR
+ ." DIR-INIT             init/wipe directory" CR
+ ." DIR                  list registered files" CR
+ ." STATS                slot/block usage summary" CR
+ ." HI LO CNT REGISTER NAME   reserve CNT blocks at HI:LO under NAME" CR
+ ." CNT ?FREE            push HI LO of first free CNT-block range" CR
+ ." COPY SRC DST         duplicate registered file SRC under name DST" CR
+ ." NEWCNT RESIZE NAME   change file size (overlap-checked)" CR
+ ." RUN NAME             load + source the file" CR
+ ." WIPE NAME            zero data blocks (keep dir entry)" CR
+ ." ERA NAME             remove dir entry (keep data)" CR
+ ." ?FILE NAME           push HI LO CNT of NAME on stack" CR
+ ." ?HEDIT NAME          open HEDIT on first block of NAME" CR ;
+0 51 LOAD
+( --- block 51 --- )
+VARIABLE CSH VARIABLE CSL VARIABLE CDH VARIABLE CDL
+VARIABLE CRH VARIABLE CRL VARIABLE CPCN
+VARIABLE FFOK VARIABLE STN VARIABLE STB
+0 52 LOAD
+( --- block 52 --- )
+: ?FREE ( cnt -- hi lo )
+ DUP 0= IF DROP 7 EMIT 0 0 ELSE
+  0 FFOK ! RC ! DBLK 1 1
+  BEGIN OVER 8 U< FFOK @ 0= AND WHILE
+   2DUP RL ! RH !
+   RH @ RL @ RC @ SEND NEL ! NEH !
+   -1 NEW-OVL? IF
+    1+ DUP 0= IF SWAP 1+ SWAP THEN
+   ELSE 1 FFOK ! THEN
+  REPEAT
+  FFOK @ 0= IF 2DROP 7 EMIT 0 0 THEN
+ THEN ;
+0 53 LOAD
+( --- block 53 --- )
+: CP1B
+ CSH @ CSL @ BLOCK
+ 128 0 DO 2 I C@ 1 I C! LOOP
+ CDH @ CDL @ BLOCK
+ 128 0 DO 1 I C@ 2 I C! LOOP UPDATE
+ CSH @ CSL @ BLOCK
+ 128 0 DO 2 I 128 + C@ 1 I C! LOOP
+ CDH @ CDL @ BLOCK
+ 128 0 DO 1 I C@ 2 I 128 + C! LOOP UPDATE ;
+0 54 LOAD
+( --- block 54 --- )
+: COPY
+ PARSE-NAME LN ! 2DROP
+ LN @ 0= IF 7 EMIT ELSE
+  DBLK FIND-NAMED DUP 0< IF DROP 7 EMIT ELSE
+   DUP SLOT-HI CSH ! DUP SLOT-LO CSL ! SLOT-CNT CPCN !
+   CPCN @ ?FREE
+   2DUP 0= SWAP 0= AND IF 2DROP ELSE
+    2DUP CDL ! CDH ! CRL ! CRH !
+    PARSE-NAME LN ! 2DROP
+    LN @ 0= IF 7 EMIT ELSE
+     DBLK FIND-NAMED 0< 0= IF 7 EMIT ELSE
+      CPCN @ 0 DO CP1B
+       CSL @ 1+ DUP 0= IF CSH @ 1+ CSH ! THEN CSL !
+       CDL @ 1+ DUP 0= IF CDH @ 1+ CDH ! THEN CDL !
+      LOOP FLUSH
+      CRH @ RH ! CRL @ RL ! CPCN @ RC !
+      RH @ RL @ RC @ SEND NEL ! NEH !
+      DBLK FIND-FREE DUP 0< IF DROP 7 EMIT ELSE (REG-WRITE) THEN
+     THEN
+    THEN
+   THEN
+  THEN
+ THEN ;
+0 55 LOAD
+( --- block 55 --- )
+: STATS 0 STN ! 0 STB ! DBLK
+ 16 0 DO I SLOT-CNT DUP IF
+   STB @ + STB ! STN @ 1+ STN !
+  ELSE DROP THEN LOOP
+ ." files=" STN @ 0 D.
+ ."  free=" 16 STN @ - 0 D.
+ ."  blocks=" STB @ 0 D. CR ;
+46 EMIT 13 EMIT 10 EMIT  ( progress: extensions ok, then welcome )
+MENU
+ENDTHRU

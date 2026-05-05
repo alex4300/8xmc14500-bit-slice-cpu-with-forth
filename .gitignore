@@ -1,0 +1,25 @@
+build/
+*.vvp
+*.vcd
+*.mem
+*.ram
+.uart_input
+.DS_Store
+__pycache__/
+node_modules/
+.claude/
+
+# Build artifacts (regenerable from source)
+*.bin
+
+# Editor backups
+*~
+*.swp
+*.swo
+
+# FPGA build outputs
+*.fs
+*.json
+!schematic/*.json
+*.posp
+*.gowin*
